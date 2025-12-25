@@ -155,18 +155,20 @@ function extractFromJsonLd(html: string): ScrapedRecipe | null {
 
   for (const match of matches) {
     try {
-      const data = JSON.parse(match[1]);
-      const recipe = Array.isArray(data) ? data.find((item: any) => item['@type'] === 'Recipe') : data;
+      const data = JSON.parse(match[1]) as unknown;
+      const recipe = Array.isArray(data) 
+        ? (data as Array<Record<string, unknown>>).find((item) => item['@type'] === 'Recipe')
+        : data as Record<string, unknown>;
       
       if (recipe && recipe['@type'] === 'Recipe') {
         let ingredients: string[] = [];
         if (Array.isArray(recipe.recipeIngredient)) {
-          ingredients = recipe.recipeIngredient.map((item: any) => 
+          ingredients = recipe.recipeIngredient.map((item: unknown) => 
             typeof item === 'string' ? item : String(item)
           );
         } else if (recipe.ingredients) {
           ingredients = Array.isArray(recipe.ingredients) 
-            ? recipe.ingredients.map((item: any) => typeof item === 'string' ? item : String(item))
+            ? recipe.ingredients.map((item: unknown) => typeof item === 'string' ? item : String(item))
             : [String(recipe.ingredients)];
         }
         
@@ -178,10 +180,14 @@ function extractFromJsonLd(html: string): ScrapedRecipe | null {
         let instructions: string[] = [];
         if (recipe.recipeInstructions) {
           if (Array.isArray(recipe.recipeInstructions)) {
-            instructions = recipe.recipeInstructions.map((step: any) => {
+            instructions = recipe.recipeInstructions.map((step: unknown) => {
               if (typeof step === 'string') return step;
-              if (step.text) return step.text;
-              if (step['@type'] === 'HowToStep' && step.text) return step.text;
+              if (typeof step === 'object' && step !== null && 'text' in step) {
+                return String((step as { text: unknown }).text);
+              }
+              if (typeof step === 'object' && step !== null && '@type' in step && step['@type'] === 'HowToStep' && 'text' in step) {
+                return String((step as { text: unknown }).text);
+              }
               return '';
             }).filter(Boolean);
           } else if (typeof recipe.recipeInstructions === 'string') {
@@ -195,15 +201,15 @@ function extractFromJsonLd(html: string): ScrapedRecipe | null {
         }
 
         return {
-          title: recipe.name || '',
+          title: String(recipe.name || ''),
           ingredients,
           instructions,
-          serves: recipe.recipeYield || recipe.yield || undefined,
-          totalTime: recipe.totalTime ? parseTime(recipe.totalTime) : undefined,
-          url: recipe.url || '',
+          serves: recipe.recipeYield ? String(recipe.recipeYield) : recipe.yield ? String(recipe.yield) : undefined,
+          totalTime: recipe.totalTime ? parseTime(recipe.totalTime as string | number) : undefined,
+          url: String(recipe.url || ''),
         };
       }
-    } catch (e) {
+    } catch {
       // Continue to next match
     }
   }

@@ -101,7 +101,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
-      <div className="border-b shrink-0 bg-background h-24">
+      <div className="border-b shrink-0 bg-background h-20">
         <div className="flex items-center justify-between gap-4 px-6 h-full py-4">
           <div className="flex-1 min-w-0 flex items-center">
             {isEditing ? (

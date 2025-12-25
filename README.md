@@ -1,6 +1,6 @@
-# Pure Recipe Web App
+# Recipes.md
 
-A modern web application for scraping and managing recipes, ported from the Python CLI version.
+A web app for scraping and managing recipes, inspired from [Python CLI version](https://github.com/devmrin/pure-recipe-py).
 
 ## Features
 
@@ -101,4 +101,4 @@ See [server/README.md](server/README.md) for backend API documentation.
 
 - **Frontend**: React, TypeScript, TanStack Router, Dexie (IndexedDB), react-markdown
 - **Backend**: Express, TypeScript, Cheerio (HTML parsing), node-fetch
-- **UI**: shadcn/ui, Tailwind CSS
+- **UI**: Tailwind CSS

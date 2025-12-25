@@ -24,7 +24,6 @@ export function CopyButton({ text, className }: CopyButtonProps) {
     <Button
       onClick={handleCopy}
       variant="outline"
-      size="sm"
       className={className}
     >
       {copied ? (

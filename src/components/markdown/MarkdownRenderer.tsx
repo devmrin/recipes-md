@@ -13,28 +13,28 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ node, ...props }) => (
+          h1: ({ ...props }) => (
             <h1 className="text-2xl font-bold mb-4 mt-6 first:mt-0 text-foreground" {...props} />
           ),
-          h2: ({ node, ...props }) => (
+          h2: ({ ...props }) => (
             <h2 className="text-xl font-semibold mb-3 mt-5 text-foreground" {...props} />
           ),
-          p: ({ node, ...props }) => (
+          p: ({ ...props }) => (
             <p className="mb-3 leading-relaxed text-foreground" {...props} />
           ),
-          ul: ({ node, ...props }) => (
+          ul: ({ ...props }) => (
             <ul className="list-disc list-inside mb-4 space-y-2 ml-0" {...props} />
           ),
-          ol: ({ node, ...props }) => (
+          ol: ({ ...props }) => (
             <ol className="list-decimal list-inside mb-4 space-y-2 ml-0" {...props} />
           ),
-          li: ({ node, ...props }) => (
+          li: ({ ...props }) => (
             <li className="ml-4 text-foreground" {...props} />
           ),
-          strong: ({ node, ...props }) => (
+          strong: ({ ...props }) => (
             <strong className="font-semibold text-foreground" {...props} />
           ),
-          a: ({ node, ...props }) => (
+          a: ({ ...props }) => (
             <a className="text-primary hover:underline" target="_blank" rel="noopener noreferrer" {...props} />
           ),
         }}
