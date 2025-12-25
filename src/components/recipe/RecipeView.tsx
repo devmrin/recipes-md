@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
-import { getRecipe, updateRecipe } from '@/lib/storage';
+import { getRecipe, updateRecipe, deleteRecipe, getAllRecipes } from '@/lib/storage';
 import type { Recipe } from '@/lib/storage';
 import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer';
 import { CopyButton } from '@/components/recipe/CopyButton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Edit2, Save, X } from 'lucide-react';
+import { Loader2, Edit2, Save, X, Trash2 } from 'lucide-react';
 import Editor from '@monaco-editor/react';
+import { useNavigate } from '@tanstack/react-router';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface RecipeViewProps {
   recipeId: string;
@@ -20,6 +29,9 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
   const [editedTitle, setEditedTitle] = useState('');
   const [editedMarkdown, setEditedMarkdown] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function loadRecipe() {
@@ -80,6 +92,29 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
       console.error('Error saving recipe:', err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!recipe) return;
+
+    setDeleting(true);
+    try {
+      await deleteRecipe(recipe.id);
+      
+      // Get all remaining recipes
+      const remainingRecipes = await getAllRecipes();
+      
+      // Navigate to the latest recipe (first in the list) or home if none remain
+      if (remainingRecipes.length > 0) {
+        navigate({ to: '/recipe/$id', params: { id: remainingRecipes[0].id } });
+      } else {
+        navigate({ to: '/' });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete recipe');
+      console.error('Error deleting recipe:', err);
+      setDeleting(false);
     }
   };
 
@@ -154,6 +189,14 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
                   <Edit2 className="size-3.5" />
                   Edit
                 </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="size-3.5" />
+                  Delete
+                </Button>
               </>
             )}
           </div>
@@ -185,6 +228,42 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
           </div>
         )}
       </div>
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Recipe</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{recipe.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="size-3.5" />
+                  Delete
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
