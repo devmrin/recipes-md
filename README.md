@@ -2,6 +2,8 @@
 
 A web app for scraping and managing recipes, inspired from [Python CLI version](https://github.com/devmrin/pure-recipe-py).
 
+![Recipes.md Demo](src/assets/recipemd.gif)
+
 ## Features
 
 - **One-click recipe addition**: Paste a recipe URL and it's automatically scraped and saved
