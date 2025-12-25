@@ -13,6 +13,54 @@ interface ScrapedRecipe {
 }
 
 /**
+ * Checks if a string is likely a section header or metadata (not an actual ingredient/instruction).
+ */
+function isSectionHeader(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  
+  // Common section header patterns
+  const headerPatterns = [
+    /^(ingredients|instructions|preparation|directions|steps|method)$/i,
+    /^to make /i,
+    /^how to /i,
+    /^ingredients\s*\(/i, // "Ingredients (US cup = 240ml)"
+    /^instructions\s*$/i,
+    /^preparation\s*$/i,
+    /^directions\s*$/i,
+    /^steps\s*$/i,
+    /^method\s*$/i,
+    /^\d+\s+(preparation|instructions|directions|steps|method)$/i, // "1 Preparation", "2 Instructions"
+    /^(preparation|instructions|directions|steps|method)\s*$/i,
+    /^instructions?preparation$/i, // "InstructionsPreparation"
+    /^instructions?preparation\s*$/i,
+  ];
+  
+  return headerPatterns.some(pattern => pattern.test(lower));
+}
+
+/**
+ * Checks if a string is likely metadata or non-recipe content.
+ */
+function isMetadata(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  
+  // Metadata patterns
+  const metadataPatterns = [
+    /^ingredients?\s*\(/i, // "Ingredients (US cup = 240ml)"
+    /^instructions?\s*$/i,
+    /^\(us cup\s*=/i,
+    /^\(.*cup.*\)$/i,
+    /^serves?:/i,
+    /^yield:/i,
+    /^prep time:/i,
+    /^cook time:/i,
+    /^total time:/i,
+  ];
+  
+  return metadataPatterns.some(pattern => pattern.test(lower));
+}
+
+/**
  * Removes checkboxes (▢) and other formatting characters from text.
  */
 function removeCheckboxes(text: string): string {
@@ -61,23 +109,112 @@ function normalizeIngredients(ingredients: string[]): string[] {
   for (const ingredient of ingredients) {
     if (typeof ingredient !== 'string') continue;
     
+    let cleaned = ingredient.trim();
+    
+    // Skip empty strings
+    if (!cleaned) continue;
+    
+    // Skip section headers and metadata
+    if (isSectionHeader(cleaned) || isMetadata(cleaned)) {
+      continue;
+    }
+    
     // If the ingredient contains checkboxes, split it
-    if (ingredient.includes('▢')) {
-      const split = splitItems(ingredient);
-      normalized.push(...split.map(normalizeIngredientParentheses));
+    if (cleaned.includes('▢')) {
+      const split = splitItems(cleaned);
+      for (const item of split) {
+        const normalizedItem = normalizeIngredientParentheses(item);
+        // Skip section headers in split items too
+        if (normalizedItem && !isSectionHeader(normalizedItem) && !isMetadata(normalizedItem)) {
+          normalized.push(normalizedItem);
+        }
+      }
     } else {
-      normalized.push(normalizeIngredientParentheses(ingredient));
+      const normalizedItem = normalizeIngredientParentheses(cleaned);
+      if (normalizedItem && !isSectionHeader(normalizedItem) && !isMetadata(normalizedItem)) {
+        normalized.push(normalizedItem);
+      }
     }
   }
   
-  // Remove duplicates while preserving order
+  // Remove duplicates while preserving order (using fuzzy matching for similar items)
   const seen = new Set<string>();
-  return normalized.filter(item => {
+  const result: string[] = [];
+  
+  for (const item of normalized) {
     const key = item.toLowerCase().trim();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+    
+    // Skip if exact duplicate
+    if (seen.has(key)) continue;
+    
+    // Skip very short items that are likely fragments (less than 3 characters, unless it's a number/unit)
+    if (key.length < 3 && !/^\d+$/.test(key) && !/^[a-z]$/i.test(key)) {
+      continue;
+    }
+    
+    // Skip if it's a substring of an already seen item (likely a broken ingredient/instruction)
+    let isSubstring = false;
+    for (const seenKey of seen) {
+      // Only consider it a substring if the difference is significant (at least 5 chars)
+      if (key.length < seenKey.length && seenKey.includes(key) && seenKey.length - key.length >= 5) {
+        isSubstring = true;
+        break;
+      }
+      if (key.length > seenKey.length && key.includes(seenKey) && key.length - seenKey.length >= 5) {
+        // Remove the shorter duplicate
+        const index = result.findIndex(r => r.toLowerCase().trim() === seenKey);
+        if (index !== -1) {
+          result.splice(index, 1);
+          seen.delete(seenKey);
+        }
+        break;
+      }
+    }
+    
+    if (!isSubstring) {
+      seen.add(key);
+      result.push(item);
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Cleans instruction text by removing leading numbers and section headers.
+ */
+function cleanInstructionText(text: string): string {
+  let cleaned = text.trim();
+  
+  // Remove "Instructions" prefix if concatenated (e.g., "InstructionsPreparation" -> "Preparation")
+  cleaned = cleaned.replace(/^instructions?/i, '').trim();
+  
+  // Remove leading numbers followed ONLY by section headers with no other content
+  // (e.g., "1 Preparation" with nothing else -> "", but "1 Cut gobi..." -> "Cut gobi...")
+  // First check if it's just a number + section header
+  const justHeaderMatch = cleaned.match(/^(\d+)\s+(preparation|instructions|directions|steps|method)\s*$/i);
+  if (justHeaderMatch) {
+    // If it's just "1 Preparation" or similar, remove it entirely
+    return '';
+  }
+  
+  // Remove leading number if followed by section header word (but keep rest of content)
+  // e.g., "1 Preparation step" -> "Preparation step" (we'll remove "Preparation" next if needed)
+  cleaned = cleaned.replace(/^\d+\s+(preparation|instructions|directions|steps|method)\s+/i, '').trim();
+  
+  // Remove section headers that are standalone (no other content)
+  if (/^(preparation|instructions|directions|steps|method)\s*$/i.test(cleaned)) {
+    return '';
+  }
+  
+  // Remove leading section header words followed by space (but keep the rest)
+  cleaned = cleaned.replace(/^(preparation|instructions|directions|steps|method)\s+/i, '').trim();
+  
+  // Remove leading numbers that are likely step numbers (since formatter will add them)
+  // But only if they're at the very start and followed by a space
+  cleaned = cleaned.replace(/^\d+\.?\s+/, '').trim();
+  
+  return cleaned;
 }
 
 /**
@@ -92,27 +229,78 @@ function normalizeInstructions(instructions: string[]): string[] {
     // Remove checkboxes and clean up
     let cleaned = removeCheckboxes(instruction);
     
+    // Clean instruction text
+    cleaned = cleanInstructionText(cleaned);
+    
+    // Skip empty strings
+    if (!cleaned) continue;
+    
+    // Skip section headers and metadata
+    if (isSectionHeader(cleaned) || isMetadata(cleaned)) {
+      continue;
+    }
+    
     // If the instruction contains multiple checkboxes, split it
     if (instruction.includes('▢') && instruction.split('▢').length > 2) {
       const split = splitItems(instruction);
-      normalized.push(...split.filter(item => item.length > 0));
+      for (const item of split) {
+        let cleanedItem = cleanInstructionText(item.trim());
+        // Skip section headers in split items too
+        if (cleanedItem && !isSectionHeader(cleanedItem) && !isMetadata(cleanedItem)) {
+          normalized.push(cleanedItem);
+        }
+      }
     } else {
       // Clean up extra whitespace and newlines
       cleaned = cleaned.replace(/\s+/g, ' ').trim();
-      if (cleaned.length > 0) {
+      // Skip if it's just a section header word
+      if (cleaned.length > 0 && !isSectionHeader(cleaned) && !isMetadata(cleaned)) {
         normalized.push(cleaned);
       }
     }
   }
   
-  // Remove duplicates while preserving order
+  // Remove duplicates while preserving order (using fuzzy matching for similar items)
   const seen = new Set<string>();
-  return normalized.filter(item => {
+  const result: string[] = [];
+  
+  for (const item of normalized) {
     const key = item.toLowerCase().trim();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+    
+    // Skip if exact duplicate
+    if (seen.has(key)) continue;
+    
+    // Skip very short items that are likely fragments (less than 5 characters for instructions)
+    if (key.length < 5 && !/^\d+/.test(key)) {
+      continue;
+    }
+    
+    // Skip if it's a substring of an already seen item (likely a broken instruction)
+    let isSubstring = false;
+    for (const seenKey of seen) {
+      // Only consider it a substring if the difference is significant (at least 10 chars for instructions)
+      if (key.length < seenKey.length && seenKey.includes(key) && seenKey.length - key.length >= 10) {
+        isSubstring = true;
+        break;
+      }
+      if (key.length > seenKey.length && key.includes(seenKey) && key.length - seenKey.length >= 10) {
+        // Remove the shorter duplicate
+        const index = result.findIndex(r => r.toLowerCase().trim() === seenKey);
+        if (index !== -1) {
+          result.splice(index, 1);
+          seen.delete(seenKey);
+        }
+        break;
+      }
+    }
+    
+    if (!isSubstring) {
+      seen.add(key);
+      result.push(item);
+    }
+  }
+  
+  return result;
 }
 
 /**
@@ -163,13 +351,17 @@ function extractFromJsonLd(html: string): ScrapedRecipe | null {
       if (recipe && recipe['@type'] === 'Recipe') {
         let ingredients: string[] = [];
         if (Array.isArray(recipe.recipeIngredient)) {
-          ingredients = recipe.recipeIngredient.map((item: unknown) => 
-            typeof item === 'string' ? item : String(item)
-          );
+          ingredients = recipe.recipeIngredient
+            .map((item: unknown) => typeof item === 'string' ? item : String(item))
+            .map(item => item.trim())
+            .filter(item => item.length > 0);
         } else if (recipe.ingredients) {
           ingredients = Array.isArray(recipe.ingredients) 
-            ? recipe.ingredients.map((item: unknown) => typeof item === 'string' ? item : String(item))
-            : [String(recipe.ingredients)];
+            ? recipe.ingredients
+                .map((item: unknown) => typeof item === 'string' ? item : String(item))
+                .map(item => item.trim())
+                .filter(item => item.length > 0)
+            : [String(recipe.ingredients)].map(item => item.trim()).filter(item => item.length > 0);
         }
         
         // Handle case where ingredients might be a single string with checkboxes
@@ -177,21 +369,27 @@ function extractFromJsonLd(html: string): ScrapedRecipe | null {
           ingredients = splitItems(ingredients[0]);
         }
         
+        // Filter out section headers and metadata before returning
+        ingredients = ingredients.filter(item => !isSectionHeader(item) && !isMetadata(item));
+        
         let instructions: string[] = [];
         if (recipe.recipeInstructions) {
           if (Array.isArray(recipe.recipeInstructions)) {
-            instructions = recipe.recipeInstructions.map((step: unknown) => {
-              if (typeof step === 'string') return step;
-              if (typeof step === 'object' && step !== null && 'text' in step) {
-                return String((step as { text: unknown }).text);
-              }
-              if (typeof step === 'object' && step !== null && '@type' in step && step['@type'] === 'HowToStep' && 'text' in step) {
-                return String((step as { text: unknown }).text);
-              }
-              return '';
-            }).filter(Boolean);
+            instructions = recipe.recipeInstructions
+              .map((step: unknown) => {
+                if (typeof step === 'string') return step.trim();
+                if (typeof step === 'object' && step !== null && 'text' in step) {
+                  return String((step as { text: unknown }).text).trim();
+                }
+                if (typeof step === 'object' && step !== null && '@type' in step && step['@type'] === 'HowToStep' && 'text' in step) {
+                  return String((step as { text: unknown }).text).trim();
+                }
+                return '';
+              })
+              .filter(Boolean)
+              .filter(item => item.length > 0);
           } else if (typeof recipe.recipeInstructions === 'string') {
-            instructions = [recipe.recipeInstructions];
+            instructions = [recipe.recipeInstructions.trim()].filter(item => item.length > 0);
           }
         }
         
@@ -199,6 +397,9 @@ function extractFromJsonLd(html: string): ScrapedRecipe | null {
         if (instructions.length === 1 && instructions[0].includes('▢')) {
           instructions = splitItems(instructions[0]);
         }
+        
+        // Filter out section headers and metadata before returning
+        instructions = instructions.filter(item => !isSectionHeader(item) && !isMetadata(item));
 
         return {
           title: String(recipe.name || ''),
@@ -266,7 +467,10 @@ async function extractFromMetaTags(html: string, url: string): Promise<ScrapedRe
     if (elements.length > 0) {
       elements.each((_, el) => {
         const text = $(el).text().trim();
-        if (text) ingredients.push(text);
+        // Filter out section headers and metadata
+        if (text && !isSectionHeader(text) && !isMetadata(text)) {
+          ingredients.push(text);
+        }
       });
       break;
     }
@@ -287,7 +491,10 @@ async function extractFromMetaTags(html: string, url: string): Promise<ScrapedRe
     if (elements.length > 0) {
       elements.each((_, el) => {
         const text = $(el).text().trim();
-        if (text) instructions.push(text);
+        // Filter out section headers and metadata
+        if (text && !isSectionHeader(text) && !isMetadata(text)) {
+          instructions.push(text);
+        }
       });
       break;
     }

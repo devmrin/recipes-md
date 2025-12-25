@@ -159,7 +159,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
           </div>
         </div>
       </div>
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden min-h-0">
         {isEditing ? (
           <div className="h-full">
             <Editor
@@ -180,7 +180,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
             />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="h-full overflow-y-auto px-6 py-6">
             <MarkdownRenderer content={recipe.markdown} />
           </div>
         )}
