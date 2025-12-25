@@ -1,6 +1,7 @@
 import { RouterProvider } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { router } from './router';
+import { RecipeProvider } from './lib/recipe-context';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,7 +15,9 @@ const queryClient = new QueryClient({
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <RecipeProvider>
+        <RouterProvider router={router} />
+      </RecipeProvider>
     </QueryClientProvider>
   );
 }

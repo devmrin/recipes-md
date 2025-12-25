@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getRecipe, updateRecipe, deleteRecipe, getAllRecipes } from '@/lib/storage';
+import { getRecipe, getAllRecipes } from '@/lib/storage';
 import type { Recipe } from '@/lib/storage';
+import { useRecipes } from '@/lib/recipe-context';
 import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer';
 import { CopyButton } from '@/components/recipe/CopyButton';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
+  const { removeRecipe, updateRecipeInList } = useRecipes();
 
   useEffect(() => {
     async function loadRecipe() {
@@ -76,7 +78,8 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
 
     setSaving(true);
     try {
-      await updateRecipe(recipe.id, {
+      // Optimistically update in context and IndexedDB
+      await updateRecipeInList(recipe.id, {
         title: editedTitle,
         markdown: editedMarkdown,
       });
@@ -100,16 +103,10 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
 
     setDeleting(true);
     try {
-      // Delete the recipe
-      await deleteRecipe(recipe.id);
+      // Optimistically delete from context and IndexedDB
+      await removeRecipe(recipe.id);
       
-      // Verify deletion is complete by checking the recipe no longer exists
-      const deletedRecipe = await getRecipe(recipe.id);
-      if (deletedRecipe) {
-        throw new Error('Recipe deletion verification failed');
-      }
-      
-      // Get all remaining recipes after deletion is confirmed
+      // Get all remaining recipes after deletion
       const remainingRecipes = await getAllRecipes();
       
       // Close dialog and reset state before navigation

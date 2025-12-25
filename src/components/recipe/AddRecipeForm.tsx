@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { scrapeRecipe } from '@/lib/recipe-scraper';
-import { saveRecipe } from '@/lib/storage';
+import { useRecipes } from '@/lib/recipe-context';
 import { useNavigate } from '@tanstack/react-router';
 import { Loader2, Plus } from 'lucide-react';
 
@@ -11,6 +11,7 @@ export function AddRecipeForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { addRecipe } = useRecipes();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,8 +28,8 @@ export function AddRecipeForm() {
       const urlMatch = recipeData.markdown.match(/\*\*Link to original recipe:\*\*\s+(.+)$/m);
       const recipeUrl = urlMatch ? urlMatch[1] : url.trim();
 
-      // Save to IndexedDB
-      const recipe = await saveRecipe({
+      // Save to IndexedDB and optimistically add to list
+      const recipe = await addRecipe({
         title: recipeData.title,
         url: recipeUrl,
         markdown: recipeData.markdown,

@@ -1,39 +1,17 @@
-import { useEffect, useState, useMemo } from 'react';
-import type { Recipe } from '@/lib/storage';
-import { getAllRecipes } from '@/lib/storage';
+import { useState, useMemo } from 'react';
 import { RecipeCard } from '@/components/recipe/RecipeCard';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { useRouterState } from '@tanstack/react-router';
+import { useRecipes } from '@/lib/recipe-context';
 
 export function RecipeList() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const { recipes, loading } = useRecipes();
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
   const router = useRouterState();
   const currentRecipeId = router.location.pathname.startsWith('/recipe/')
     ? router.location.pathname.split('/recipe/')[1]
     : undefined;
-
-  useEffect(() => {
-    async function loadRecipes() {
-      try {
-        const allRecipes = await getAllRecipes();
-        setRecipes(allRecipes);
-      } catch (err) {
-        console.error('Error loading recipes:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadRecipes();
-
-    // Refresh recipes periodically (IndexedDB doesn't have great event support)
-    // In a production app, you might want to use a state management solution
-    const interval = setInterval(loadRecipes, 2000);
-    return () => clearInterval(interval);
-  }, []);
 
   const filteredRecipes = useMemo(() => {
     if (!searchQuery.trim()) return recipes;
