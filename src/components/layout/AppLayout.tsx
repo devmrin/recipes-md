@@ -17,12 +17,12 @@ export function AppLayout() {
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-md">
-              <h2 className="text-2xl font-semibold mb-3">Welcome to Pure Recipe</h2>
+              <h2 className="text-2xl font-semibold mb-3">Welcome</h2>
               <p className="text-muted-foreground mb-4">
                 Add a recipe URL to get started, or select a recipe from the sidebar.
               </p>
               <p className="text-sm text-muted-foreground">
-                Pure Recipe extracts recipes from popular cooking websites and saves them in a clean, readable format.
+                We extract just the recipe content and save them in a clean, readable format.
               </p>
             </div>
           </div>
