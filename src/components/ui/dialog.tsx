@@ -26,7 +26,7 @@ function Dialog({ open, onOpenChange, children }: DialogProps) {
       className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={() => onOpenChange(false)}
     >
-      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" />
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-[0.5px]" />
       <div
         className="relative z-50"
         onClick={(e) => e.stopPropagation()}

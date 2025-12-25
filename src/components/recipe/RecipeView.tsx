@@ -100,10 +100,21 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
 
     setDeleting(true);
     try {
+      // Delete the recipe
       await deleteRecipe(recipe.id);
       
-      // Get all remaining recipes
+      // Verify deletion is complete by checking the recipe no longer exists
+      const deletedRecipe = await getRecipe(recipe.id);
+      if (deletedRecipe) {
+        throw new Error('Recipe deletion verification failed');
+      }
+      
+      // Get all remaining recipes after deletion is confirmed
       const remainingRecipes = await getAllRecipes();
+      
+      // Close dialog and reset state before navigation
+      setShowDeleteDialog(false);
+      setDeleting(false);
       
       // Navigate to the latest recipe (first in the list) or home if none remain
       if (remainingRecipes.length > 0) {
@@ -115,6 +126,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
       setError(err instanceof Error ? err.message : 'Failed to delete recipe');
       console.error('Error deleting recipe:', err);
       setDeleting(false);
+      // Keep dialog open on error so user can see the error or try again
     }
   };
 
