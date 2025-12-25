@@ -55,7 +55,7 @@ export function RecipeList() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b">
+      <div className="px-4 pt-4 pb-2">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
           <Input
@@ -67,7 +67,7 @@ export function RecipeList() {
           />
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4 space-y-2">
         {filteredRecipes.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">

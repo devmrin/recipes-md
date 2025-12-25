@@ -3,7 +3,7 @@ import { getRecipe, updateRecipe } from '@/lib/storage';
 import type { Recipe } from '@/lib/storage';
 import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer';
 import { CopyButton } from '@/components/recipe/CopyButton';
-import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, Edit2, Save, X } from 'lucide-react';
 import Editor from '@monaco-editor/react';
@@ -101,49 +101,22 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
-      <div className="border-b pb-4 shrink-0 bg-background">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1 min-w-0">
+      <div className="border-b shrink-0 bg-background h-24">
+        <div className="flex items-center justify-between gap-4 px-6 h-full py-4">
+          <div className="flex-1 min-w-0 flex items-center">
             {isEditing ? (
-              <div className="p-6 space-y-4">
-                <Textarea
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                  className="text-2xl font-bold min-h-[60px] resize-none"
-                  placeholder="Recipe title..."
-                />
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  {recipe.serves && (
-                    <span>
-                      Serves: {recipe.serves}
-                    </span>
-                  )}
-                  {recipe.totalTime && (
-                    <span>
-                      Total Time: {recipe.totalTime} mins
-                    </span>
-                  )}
-                </div>
-              </div>
+              <Input
+                type="text"
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                className="!text-2xl md:!text-2xl font-bold break-words leading-8 !h-8 border-0 shadow-none px-0 py-0 focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground rounded-none"
+                placeholder="Recipe title..."
+              />
             ) : (
-              <>
-                <h1 className="p-6 text-2xl font-bold mb-2 break-words">{recipe.title}</h1>
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground px-6">
-                  {recipe.serves && (
-                    <span>
-                      Serves: {recipe.serves}
-                    </span>
-                  )}
-                  {recipe.totalTime && (
-                    <span>
-                      Total Time: {recipe.totalTime} mins
-                    </span>
-                  )}
-                </div>
-              </>
+              <h1 className="text-2xl font-bold break-words leading-8">{recipe.title}</h1>
             )}
           </div>
-          <div className="shrink-0 pr-6 flex items-center gap-2">
+          <div className="shrink-0 flex items-center gap-2">
             {isEditing ? (
               <>
                 <Button
@@ -207,7 +180,7 @@ export function RecipeView({ recipeId }: RecipeViewProps) {
             />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto px-6 py-6">
             <MarkdownRenderer content={recipe.markdown} />
           </div>
         )}
